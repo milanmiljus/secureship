@@ -10,6 +10,7 @@ from config import settings
 from db.engine import AsyncSessionLocal
 from routes.chat import router as chat_router
 from routes.verify import router as verify_router
+from routes.admin import router as admin_router
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ app.add_middleware(
 
 app.include_router(chat_router)
 app.include_router(verify_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")
