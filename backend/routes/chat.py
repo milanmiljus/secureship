@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +26,16 @@ class CreateSessionResponse(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str
     message: str
+
+    @field_validator("message")
+    @classmethod
+    def message_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Message cannot be empty")
+        if len(v) > 2000:
+            raise ValueError("Message too long (max 2000 characters)")
+        return v
 
 
 class ChatResponse(BaseModel):
@@ -59,9 +69,6 @@ async def create_session(db: AsyncSession = Depends(get_db)):
 
 @router.post("/chat", response_model=ChatResponse)
 async def send_message(request: ChatRequest, db: AsyncSession = Depends(get_db)):
-    if len(request.message) > 2000:
-        raise HTTPException(status_code=422, detail="Message too long (max 2000 characters)")
-
     # Load in-memory session (authoritative for state)
     session = await session_store.get(request.session_id)
     if not session:

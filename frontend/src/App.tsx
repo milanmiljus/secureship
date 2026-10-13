@@ -1,6 +1,13 @@
 import ChatWindow from './components/Chat/ChatWindow'
+import AdminApp from './admin/AdminApp'
+
+const isAdmin = window.location.pathname.startsWith('/admin')
 
 export default function App() {
+  if (isAdmin) {
+    return <AdminApp />
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-2xl">

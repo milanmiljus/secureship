@@ -52,6 +52,26 @@ class InMemorySessionStore:
         async with self._lock:
             self._sessions.pop(session_id, None)
 
+    async def cleanup_expired(self) -> int:
+        """
+        Remove all sessions that have exceeded SESSION_TTL_MINUTES of inactivity.
+        Returns the number of sessions evicted.
+        Called by the background task in main.py every 5 minutes.
+        """
+        ttl = timedelta(minutes=settings.SESSION_TTL_MINUTES)
+        now = datetime.now(timezone.utc)
+        expired = [
+            sid
+            for sid, session in self._sessions.items()
+            if now - session.last_active_at > ttl
+        ]
+        async with self._lock:
+            for sid in expired:
+                self._sessions.pop(sid, None)
+        if expired:
+            logger.info("Session cleanup: evicted %d expired session(s)", len(expired))
+        return len(expired)
+
 
 # Singleton — replaced by Redis implementation later without changing any other code
 session_store = InMemorySessionStore()

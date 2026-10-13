@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import sys
 from contextlib import asynccontextmanager
 
 import httpx
@@ -10,14 +12,53 @@ from config import settings
 from db.engine import AsyncSessionLocal
 from routes.chat import router as chat_router
 from routes.verify import router as verify_router
+from routes.admin import router as admin_router
+from services.session_store import session_store
 
 logger = logging.getLogger(__name__)
 
 
+async def _session_cleanup_loop() -> None:
+    """Background task: evict expired sessions every 5 minutes (INV-05)."""
+    while True:
+        await asyncio.sleep(300)  # 5 minutes
+        try:
+            await session_store.cleanup_expired()
+        except Exception:
+            logger.exception("Error during session cleanup")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # INV-12: Refuse to start with a half-configured Auth0 setup.
+    # Both empty → dev mode (fine). Both set → production (fine).
+    # One set without the other → misconfiguration → refuse to start.
+    domain_set = bool(settings.AUTH0_DOMAIN)
+    audience_set = bool(settings.AUTH0_AUDIENCE)
+    if domain_set != audience_set:
+        logger.error(
+            "AUTH0 misconfiguration: AUTH0_DOMAIN=%r, AUTH0_AUDIENCE=%r. "
+            "Both must be set together or both left empty (dev mode). Refusing to start.",
+            settings.AUTH0_DOMAIN,
+            settings.AUTH0_AUDIENCE,
+        )
+        sys.exit(1)
+
+    if not domain_set:
+        logger.warning("AUTH0_DOMAIN not set — running in dev mode (admin auth disabled)")
+
     logger.info("SecureShip API starting...")
-    yield
+
+    # INV-05: Start background session cleanup task
+    cleanup_task = asyncio.create_task(_session_cleanup_loop())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="SecureShip API", lifespan=lifespan)
@@ -33,6 +74,7 @@ app.add_middleware(
 
 app.include_router(chat_router)
 app.include_router(verify_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")
