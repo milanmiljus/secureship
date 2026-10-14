@@ -38,12 +38,32 @@ class ChatRequest(BaseModel):
         return v
 
 
+class PackageOut(BaseModel):
+    description: str
+    weight_kg: float
+    declared_value: float
+
+
+class ShipmentOut(BaseModel):
+    id: str
+    tracking_number: str
+    status: str
+    carrier: str
+    origin: str
+    destination: str
+    estimated_delivery: str
+    last_update: str | None = None
+    # Only populated by lookup_shipment_detail; the list lookup omits packages.
+    packages: list[PackageOut] | None = None
+
+
 class ChatResponse(BaseModel):
     message: str
     state: str
     show_code_modal: bool = False
     is_escalated: bool = False
     escalation_script: list[str] | None = None
+    shipments: list[ShipmentOut] | None = None
 
 
 @router.post("/sessions", response_model=CreateSessionResponse)
@@ -116,4 +136,5 @@ async def send_message(request: ChatRequest, db: AsyncSession = Depends(get_db))
         show_code_modal=result.get("show_code_modal", False),
         is_escalated=result.get("is_escalated", False),
         escalation_script=result.get("escalation_script"),
+        shipments=result.get("shipments"),
     )

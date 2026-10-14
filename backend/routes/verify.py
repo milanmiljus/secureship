@@ -47,6 +47,15 @@ async def verify_code_endpoint(request: VerifyCodeRequest):
         )
 
     result = check_verification_code(session, request.code)
+
+    if result["verified"]:
+        # Clear verification exchange from history so the model doesn't echo
+        # old "I've sent a code" messages in subsequent turns.
+        session.message_history = [{
+            "role": "assistant",
+            "content": "You're verified! How can I help you with your shipments today?",
+        }]
+
     await session_store.save(session)
 
     return VerifyCodeResponse(
