@@ -1,21 +1,23 @@
-import MessageBubble from './MessageBubble'
-
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-  id: string
-}
+import MessageBubble from "./MessageBubble";
+import type { Message } from "./ChatWindow";
 
 interface Props {
-  messages: Message[]
+  messages: Message[];
+  isEscalated?: boolean;
 }
 
 export default function MessageList({ messages }: Props) {
   return (
-    <div className="flex flex-col gap-3">
-      {messages.map(msg => (
-        <MessageBubble key={msg.id} role={msg.role} content={msg.content} />
+    <>
+      {messages.map((msg) => (
+        <MessageBubble
+          key={msg.id}
+          role={msg.role}
+          content={msg.content}
+          avatar={msg.avatar}
+          shipments={msg.shipments}
+        />
       ))}
-    </div>
-  )
+    </>
+  );
 }

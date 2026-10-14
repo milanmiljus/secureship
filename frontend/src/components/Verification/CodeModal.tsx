@@ -10,8 +10,8 @@ interface Props {
 export default function CodeModal({ sessionId, onVerified, onClose }: Props) {
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isReset, setIsReset] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -29,12 +29,10 @@ export default function CodeModal({ sessionId, onVerified, onClose }: Props) {
       if (data.verified) {
         onVerified()
       } else if (data.reset) {
-        // Max attempts or expired — close modal, show message in chat
         setError(data.message)
-        setTimeout(onClose, 2000)
+        setIsReset(true)
       } else {
         setError(data.message)
-        setAttemptsRemaining(data.attempts_remaining ?? null)
         setCode('')
         inputRef.current?.focus()
       }
@@ -73,19 +71,23 @@ export default function CodeModal({ sessionId, onVerified, onClose }: Props) {
         {error && (
           <p className="text-red-600 text-sm text-center mb-3">{error}</p>
         )}
-        {attemptsRemaining !== null && attemptsRemaining > 0 && (
-          <p className="text-amber-600 text-xs text-center mb-3">
-            {attemptsRemaining} attempt{attemptsRemaining !== 1 ? 's' : ''} remaining
-          </p>
-        )}
 
-        <button
-          onClick={handleSubmit}
-          disabled={code.length !== 6 || isLoading}
-          className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? 'Verifying...' : 'Verify'}
-        </button>
+        {isReset ? (
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-gray-700 text-white rounded-xl font-semibold hover:bg-gray-800 transition-colors"
+          >
+            Close
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            disabled={code.length !== 6 || isLoading}
+            className="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isLoading ? 'Verifying...' : 'Verify'}
+          </button>
+        )}
       </div>
     </div>
   )
