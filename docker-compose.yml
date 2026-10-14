@@ -1,0 +1,55 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - VITE_AUTH0_DOMAIN=${AUTH0_DOMAIN:-}
+        - VITE_AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-}
+        - VITE_AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://secureship:secureship@postgres:5432/secureship
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - LLM_MODEL=${LLM_MODEL:-qwen3:8b}
+      - LLM_FALLBACK_MODEL=${LLM_FALLBACK_MODEL:-llama3.2:3b}
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN:-}
+      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-}
+      - SESSION_TTL_MINUTES=${SESSION_TTL_MINUTES:-30}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: secureship
+      POSTGRES_USER: secureship
+      POSTGRES_PASSWORD: secureship
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "secureship"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

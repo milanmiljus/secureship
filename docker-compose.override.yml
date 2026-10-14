@@ -1,0 +1,8 @@
+services:
+  backend:
+    volumes:
+      - ./backend:/app
+      - ./scripts:/app/scripts
+    environment:
+      - RELOAD_FLAG=--reload
+      - RUN_SEED=false
